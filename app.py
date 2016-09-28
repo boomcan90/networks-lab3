@@ -24,8 +24,17 @@ todo_items = [
 # url for api: localhost:5000/api/
 
 @app.route("/api/todoitem", methods=['GET'])
-def index():
+def alltasks():
     return jsonify({'todo_items' : todo_items})
+
+
+@app.route('/api/todoitem/<int:num>', methods=['GET'])
+def task(num):
+    task = [task for task in todo_items if task['id'] == num]
+    if len(task) == 0:
+        abort(404)
+    return jsonify({'task': task[0]})
+
 
 # url for showing: localhost:5000/todolist
 
