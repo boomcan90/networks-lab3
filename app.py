@@ -1,18 +1,34 @@
-from flask import Flask, url_for
+from flask import Flask
+from flask import jsonify
 
 app=Flask(__name__)
 
-@app.route("/")
-def api_root():
-    return "Welcome"
+# dummy test data
 
-@app.route('/articles')
-def api_articles():
-    return 'List of ' + url_for('api_articles')
+todo_items = [
+    {
+        'id': 1,
+        'title': u'Get clara to shut up',
+        'description': u'She is too damn irritating',
+        'completed': False
+    },
+    {
+        'id': 2,
+        'title': u'Please, shut clara up',
+        'description': u'She just doesnt know when to shut up',
+        'completed': False
+    }
+]
 
-@app.route('/articles/<articleid>')
-def api_article(articleid):
-    return 'You are reading ' + articleid
+
+# url for api: localhost:5000/api/
+
+@app.route("/api/todoitem", methods=['GET'])
+def index():
+    return jsonify({'todo_items' : todo_items})
+
+# url for showing: localhost:5000/todolist
+
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=8000)
