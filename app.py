@@ -3,11 +3,23 @@ from flask import jsonify
 from flask import make_response
 from flask import abort
 from flask import request
-import sys
-from flask_debugtoolbar import DebugToolbarExtension
+from flask_httpauth import HTTPBasicAuth
+
 
 app=Flask(__name__)
-toolbar = DebugToolbarExtension(app)
+auth = HTTPBasicAuth()
+
+# dummy user info
+
+@auth.get_password
+def get_password(username):
+    if username == 'root':
+        return 'icrackedkali'
+    return None
+
+@auth.error_handler
+def error():
+    return make_response(jsonify({'Error': 'Not authorized'}), 401)
 
 # dummy test data
 
@@ -42,8 +54,8 @@ def todo_item(num):
     return jsonify({'todo_items': todo_item[0]})
 
 @app.route('/api/<int:num>', methods=['PUT'])
+@auth.login_required
 def update(num):
-    a = []
     for i in todo_items:
         if i['id'] == num:
             for j in request.json:
@@ -52,6 +64,7 @@ def update(num):
             return jsonify({"i":i})
 
 @app.route('/api/<int:num>', methods=["DELETE"])
+@auth.login_required
 def delete(num):
     todo_item = [todo_item for todo_item in todo_items if todo_item['id'] == num]
     if len(todo_item) == 0:
@@ -67,6 +80,10 @@ def error(num):
 @app.errorhandler(400)
 def error(num):
     return make_response(jsonify({'Error':'Not allowed'}), 400)
+
+@app.errorhandler(401)
+def error(num):
+    return make_response(jsonify({'Error': 'Not authorized'}), 401)
 
 @app.route('/api/todoitem', methods=['POST'])
 def add():
