@@ -13,8 +13,8 @@ auth = HTTPBasicAuth()
 
 @auth.get_password
 def get_password(username):
-    if username == 'root':
-        return 'icrackedkali'
+    if username in users.keys():
+        return users[username]
     return None
 
 @auth.error_handler
@@ -25,52 +25,76 @@ def error():
 
 todo_items = [
     {
-        'id': 1,
-        'title': u'Get clara to shut up',
-        'description': u'She is too damn irritating',
-        'completed': False
+        'user': 'abc',
+        'title': u'Get Networks lab done',
+        'description': u'The deadline is Tuesday',
+        'completed': "False"
     },
     {
-        'id': 2,
-        'title': u'Please, shut clara up',
-        'description': u'She just doesnt know when to shut up',
-        'completed': False
+        'user': 'def',
+        'title': u'Film HASS shooting',
+        'description': u'Setup at 1:30 pm on friday; shooting thereafter',
+        'completed': "False"
     }
 ]
 
+# dummy user information
+users = {
+        'abc': '123',
+        'def': '456'
+        }
 
 # url for api: localhost:5000/api/
-
+@auth.login_required
 @app.route("/api/todoitem", methods=['GET'])
 def alltasks():
-    return jsonify({'todo_items' : todo_items})
+    try:
+        request.authorization.username
+    except:
+        abort(401)
+    user_todo = todo_list(request.authorization.username)
+    return jsonify({'todo_items' : user_todo})
 
+@auth.login_required
+@app.route("/api/todoitem/completed", methods=['GET'])
+def completed():
+    user_todo = todo_list(request.authorization.username)
+    return jsonify({'todo_items':[todoitem for todoitem in user_todo if todoitem['completed']=='True']})
 
-@app.route('/api/<int:num>', methods=['GET'])
+@auth.login_required
+@app.route('/api/todoitem/notcompleted', methods=['GET'])
+def incomplete():
+    user_todo = todo_list(request.authorization.username)
+    return jsonify({'todo_items': [todoitem for todoitem in user_todo if todoitem['completed'] != 'True']})
+
+@auth.login_required
+@app.route('/api/todoitem/<int:num>', methods=['GET'])
 def todo_item(num):
-    todo_item = [todo_item for todo_item in todo_items if todo_item['id'] == num]
-    if len(todo_item) == 0:
+    user_todo = todo_list(request.authorization.username)
+    if len(user_todo) < num - 1:
         abort(404)
-    return jsonify({'todo_items': todo_item[0]})
+    return jsonify({'todo_items': user_todo[num-1]})
 
-@app.route('/api/<int:num>', methods=['PUT'])
+@app.route('/api/todoitem/<int:num>', methods=['PUT'])
 @auth.login_required
 def update(num):
-    for i in todo_items:
-        if i['id'] == num:
-            for j in request.json:
-                i[j] = request.json[j]
+    user_todo = todo_list(request.authorization.username)
+    if len(user_todo) < num-1:
+        abort(404)
+    for j in request.json:
+        user_todo[num-1][j] = request.json[j]
 
-            return jsonify({"i":i})
+    return jsonify({'todo_items': user_todo[num-1]})
 
-@app.route('/api/<int:num>', methods=["DELETE"])
+@app.route('/api/todoitem/<int:num>', methods=["DELETE"])
 @auth.login_required
 def delete(num):
-    todo_item = [todo_item for todo_item in todo_items if todo_item['id'] == num]
-    if len(todo_item) == 0:
+    user_todo = todo_list(request.authorization.username)
+    if len(user_todo) <  num:
         abort(404)
-    todo_items.remove(todo_item[0])
-    return jsonify({'todo_items': todo_items})
+    todo_items.remove(user_todo[num-1])
+    user_todo = todo_list(request.authorization.username)
+    return jsonify({'todo_items': user_todo})
 
 
 @app.errorhandler(404)
@@ -86,17 +110,35 @@ def error(num):
     return make_response(jsonify({'Error': 'Not authorized'}), 401)
 
 @app.route('/api/todoitem', methods=['POST'])
+@auth.login_required
 def add():
     if not request.json:
         abort(400)
     todo_item = {
-        'id' : todo_items[-1]['id'] +1,
+        'user' : request.authorization.username ,
         "title" : request.json['title'],
         "description" : request.json['description'],
-        "completed" : False
+        "completed" : "False"
     }
     todo_items.append(todo_item)
-    return jsonify({'todo_items': todo_items}), 201
+    user_items = todo_list(todo_item['uname'])
+    return jsonify({'todo_items': user_todo}), 201
+
+@app.route('/api/users', methods=['GET'])
+@auth.login_required
+def allusers():
+    return jsonify({'users': list(users.keys())})
+
+# helper functions
+
+def todo_list(uname):
+    user_todo =[]
+    for item in todo_items:
+        if item['user'] == uname:
+            user_todo.append(item)
+    if len(user_todo) == 0:
+        return None
+    return user_todo
 
 
 # url for showing: localhost:5000/todolist
